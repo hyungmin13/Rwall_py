@@ -155,10 +155,9 @@ if __name__ == "__main__":
     model = Model(all_params["network"]["layers"], model_fn)
     all_params["network"]["layers"] = from_state_dict(model, a).params
     dynamic_params = all_params["network"]["layers"]
-    indexes, counts = np.unique(train_data['pos'][:,0], return_counts=True)
-    indexes2, counts2 = np.unique(valid_data['pos'][:,0], return_counts=True)
+    indexes, counts = np.unique(valid_data['pos'][:,0], return_counts=True)
+
 #%% temporal error는 51개의 시간단계에대해서 [:,0]는 velocity error, [:,1]은 pressure error
-    output_shape = (213,141,61)
     temporal_error_vel_list = []
     temporal_error_pre_list = []
     temporal_error_acc_list = []
@@ -166,32 +165,29 @@ if __name__ == "__main__":
         print(j)
         acc = np.concatenate([acc_cal(all_params["network"]["layers"], all_params, train_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])][10000*s:10000*(s+1)], model_fn) 
                               for s in range(train_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])].shape[0]//10000+1)],0)
-        pred = np.concatenate([model_fn(all_params, valid_data['pos'][np.sum(counts2[:j]):np.sum(counts2[:(j+1)])][10000*s:10000*(s+1)]) for s in range(valid_data['pos'][]]
+        pred = np.concatenate([model_fn(all_params, valid_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])][10000*s:10000*(s+1)]) 
+                              for s in range(valid_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])].shape[0]//10000+1)],0)
         output_keys = ['u', 'v', 'w', 'p']
         output_unnorm = [all_params["data"]['u_ref'],all_params["data"]['v_ref'],
                         all_params["data"]['w_ref'],1.185*all_params["data"]['u_ref']]
         outputs = {output_keys[i]:pred[:,i]*output_unnorm[i] for i in range(len(output_keys))}
-        
-        output_ext = {output_keys[i]:valid_data['vel'][j,:,:,:,i].reshape(-1) for i in range(len(output_keys))}
-        output_ext['p'] = output_ext['p'] - 0.0025*all_params['domain']['in_max'][0,1]*valid_data['pos'].reshape((51,)+output_shape+(4,))[0,:,:,:,1].reshape(-1)*1.185*x_ref_n/u_ref_n**2
-        output_ext['p'] = output_ext['p'] - np.mean(output_ext['p'])
 
+        output_ext = {output_keys[i]:valid_data['vel'][np.sum(counts[:j]):np.sum(counts[:(j+1)]),i] for i in range(len(output_keys))}
+        output_ext_acc = {output_keys[i]:valid_data['acc'][np.sum(counts[:j]):np.sum(counts[:(j+1)]),i:i+1] for i in range(len(output_keys)-1)}
 
         f = np.concatenate([(outputs['u']-output_ext['u']).reshape(-1,1), 
                             (outputs['v']-output_ext['v']).reshape(-1,1), 
                             (outputs['w']-output_ext['w']).reshape(-1,1)],1)
         div = np.concatenate([output_ext['u'].reshape(-1,1), output_ext['v'].reshape(-1,1), 
-                            output_ext['w'].reshape(-1,1)],1)
-        f2 = np.concatenate([(acc[:,0]-train_data['acc'][np.sum(counts[:j]):np.sum(counts[:(j+1)])][:,0]).reshape(-1,1), 
-                             (acc[:,1]-train_data['acc'][np.sum(counts[:j]):np.sum(counts[:(j+1)])][:,1]).reshape(-1,1), 
-                             (acc[:,2]-train_data['acc'][np.sum(counts[:j]):np.sum(counts[:(j+1)])][:,2]).reshape(-1,1)],1)
-        div2 = np.concatenate([train_data['acc'][:,0].reshape(-1,1), train_data['acc'][:,1].reshape(-1,1), 
-                               train_data['acc'][:,2].reshape(-1,1)],1)  
-        temporal_error_pre_list.append(np.linalg.norm(outputs['p'] - output_ext['p'])/np.linalg.norm(output_ext['p']))
+                              output_ext['w'].reshape(-1,1)],1)
+        f2 = np.concatenate([(acc[:,0]-output_ext_acc['u']).reshape(-1,1), 
+                             (acc[:,1]-output_ext_acc['v']).reshape(-1,1), 
+                             (acc[:,2]-output_ext_acc['w']).reshape(-1,1)],1)
+        div2 = np.concatenate([output_ext_acc['u'].reshape(-1,1), output_ext_acc['v'].reshape(-1,1), 
+                               output_ext_acc['w'].reshape(-1,1)],1)  
         temporal_error_vel_list.append(np.linalg.norm(f, ord='fro')/np.linalg.norm(div,ord='fro'))    
         temporal_error_acc_list.append(np.linalg.norm(f2, ord='fro')/np.linalg.norm(div2,ord='fro'))
     temporal_error = np.concatenate([np.array(temporal_error_vel_list).reshape(-1,1),
-                                     np.array(temporal_error_pre_list).reshape(-1,1),
                                      np.array(temporal_error_acc_list).reshape(-1,1)],1)
 
 #%%
