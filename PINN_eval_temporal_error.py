@@ -121,7 +121,7 @@ if __name__ == "__main__":
     import argparse
     from glob import glob
     #checkpoint_fol = "TBL_run_test36"
-    parser = argparse.ArgumentParser(description='TBL_PINN')
+    parser = argparse.ArgumentParser(description='Rwall_PINN')
     parser.add_argument('-c', '--checkpoint', type=str, help='checkpoint', default="")
     args = parser.parse_args()
     checkpoint_fol = args.checkpoint
@@ -129,10 +129,10 @@ if __name__ == "__main__":
     path = "results/summaries/"
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','rb') as f:
         a = pickle.load(f)
-    a['data_init_kwargs']['path'] = 'DNS/'
-    a['problem_init_kwargs']['path_s'] = 'Ground/'
-    with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
-        pickle.dump(a,f)
+    #a['data_init_kwargs']['path'] = 'DNS/'
+    #a['problem_init_kwargs']['path_s'] = 'Ground/'
+    #with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
+    #    pickle.dump(a,f)
 
     values = list(a.values())
 
@@ -156,12 +156,7 @@ if __name__ == "__main__":
     all_params["network"]["layers"] = from_state_dict(model, a).params
     dynamic_params = all_params["network"]["layers"]
     indexes, counts = np.unique(train_data['pos'][:,0], return_counts=True)
-#%%
-    u_tau = 15*10**(-6)/36.2/10**(-6)
-    u_ref_n = 4.9968*10**(-2)/u_tau
-    delta = 36.2*10**(-6)
-    x_ref_n = 1.0006*10**(-3)/delta
-
+    indexes2, counts2 = np.unique(valid_data['pos'][:,0], return_counts=True)
 #%% temporal error는 51개의 시간단계에대해서 [:,0]는 velocity error, [:,1]은 pressure error
     output_shape = (213,141,61)
     temporal_error_vel_list = []
@@ -171,13 +166,13 @@ if __name__ == "__main__":
         print(j)
         acc = np.concatenate([acc_cal(all_params["network"]["layers"], all_params, train_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])][10000*s:10000*(s+1)], model_fn) 
                               for s in range(train_data['pos'][np.sum(counts[:j]):np.sum(counts[:(j+1)])].shape[0]//10000+1)],0)
-        pred = model_fn(all_params, valid_data['pos'].reshape((51,)+output_shape+(4,))[j,:,:,:,:].reshape(-1,4))
+        pred = np.concatenate([model_fn(all_params, valid_data['pos'][np.sum(counts2[:j]):np.sum(counts2[:(j+1)])][10000*s:10000*(s+1)]) for s in range(valid_data['pos'][]]
         output_keys = ['u', 'v', 'w', 'p']
         output_unnorm = [all_params["data"]['u_ref'],all_params["data"]['v_ref'],
                         all_params["data"]['w_ref'],1.185*all_params["data"]['u_ref']]
         outputs = {output_keys[i]:pred[:,i]*output_unnorm[i] for i in range(len(output_keys))}
-        outputs['p'] = outputs['p'] - np.mean(outputs['p'])
-        output_ext = {output_keys[i]:valid_data['vel'].reshape((51,)+output_shape+(4,))[j,:,:,:,i].reshape(-1) for i in range(len(output_keys))}
+        
+        output_ext = {output_keys[i]:valid_data['vel'][j,:,:,:,i].reshape(-1) for i in range(len(output_keys))}
         output_ext['p'] = output_ext['p'] - 0.0025*all_params['domain']['in_max'][0,1]*valid_data['pos'].reshape((51,)+output_shape+(4,))[0,:,:,:,1].reshape(-1)*1.185*x_ref_n/u_ref_n**2
         output_ext['p'] = output_ext['p'] - np.mean(output_ext['p'])
 
