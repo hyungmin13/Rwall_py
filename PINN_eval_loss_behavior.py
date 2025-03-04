@@ -150,6 +150,7 @@ if __name__ == "__main__":
     checkpoint_list = sorted(glob(run.c.model_out_dir+'/*.pkl'), key=lambda x: int(x.split('_')[4].split('.')[0]))
     vel_error_list = []
     acc_error_list = []
+    acc_error_list_t = []
     pos_ref = all_params["domain"]["in_max"].flatten()
     vel_ref = np.array([all_params["data"]["u_ref"],
                         all_params["data"]["v_ref"],
@@ -158,6 +159,7 @@ if __name__ == "__main__":
     ref_data = {ref_key[i]:ref_val for i, ref_val in enumerate(np.concatenate([pos_ref,vel_ref]))}
 
     indexes, counts = np.unique(valid_data['pos'][:,0], return_counts=True)
+    indexes2, counts2 = np.unique(train_data['pos'][:,0], return_counts=True)
     g = 0
     output_keys = ['u', 'v', 'w', 'p']
     timestep = 25
@@ -175,13 +177,18 @@ if __name__ == "__main__":
                                       valid_data['pos'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)])][10000*s:10000*(s+1)], 
                                       model_fn) 
                               for s in range(valid_data['pos'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)])].shape[0]//10000+1)],0)
+        acc_t = np.concatenate([acc_cal(all_params["network"]["layers"], 
+                                      all_params, 
+                                      train_data['pos'][np.sum(counts2[:timestep]):np.sum(counts2[:(timestep+1)])][10000*s:10000*(s+1)], 
+                                      model_fn) 
+                              for s in range(train_data['pos'][np.sum(counts2[:timestep]):np.sum(counts2[:(timestep+1)])].shape[0]//10000+1)],0)
         pred = model_fn(all_params, valid_data['pos'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)])])
         ref_key = ['t_ref', 'x_ref', 'y_ref', 'z_ref', 'u_ref', 'v_ref', 'w_ref', 'u_ref']
         pred_ = np.concatenate([pred[:,i:i+1]*ref_data[ref_key[i+4]] for i in range(4)],1)
         
         output_ext = {output_keys[i]:valid_data['vel'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)]),i] for i in range(3)}
         output_ext_acc = {output_keys[i]:valid_data['acc'][np.sum(counts[:timestep]):np.sum(counts[:(timestep+1)]),i] for i in range(3)}
-
+        output_ext_acc_t = {output_keys[i]:train_data['acc'][np.sum(counts2[:timestep]):np.sum(counts2[:(timestep+1)]),i] for i in range(3)}
         f = np.concatenate([(pred_[:,0]-output_ext['u']).reshape(-1,1), 
             (pred_[:,1]-output_ext['v']).reshape(-1,1), 
             (pred_[:,2]-output_ext['w']).reshape(-1,1)],1)
@@ -192,12 +199,19 @@ if __name__ == "__main__":
                                 (acc[:,2]-output_ext_acc['w']).reshape(-1,1)],1)
         div2 = np.concatenate([output_ext_acc['u'].reshape(-1,1), output_ext_acc['v'].reshape(-1,1), 
                                output_ext_acc['w'].reshape(-1,1)],1)
+        f3 = np.concatenate([(acc_t[:,0]-output_ext_acc_t['u']).reshape(-1,1), 
+                                (acc_t[:,1]-output_ext_acc_t['v']).reshape(-1,1), 
+                                (acc_t[:,2]-output_ext_acc_t['w']).reshape(-1,1)],1)
+        div3 = np.concatenate([output_ext_acc_t['u'].reshape(-1,1), output_ext_acc_t['v'].reshape(-1,1), 
+                               output_ext_acc_t['w'].reshape(-1,1)],1)
         vel_error_list.append(np.linalg.norm(f, ord='fro')/np.linalg.norm(div,ord='fro'))
         acc_error_list.append(np.linalg.norm(f2, ord='fro')/np.linalg.norm(div2,ord='fro'))
+        acc_error_list_t.append(np.linalg.norm(f3, ord='fro')/np.linalg.norm(div3,ord='fro'))
         g = g+1
     vel_error = np.array(vel_error_list)
     acc_error = np.array(acc_error_list)
-    tol_error = np.concatenate([vel_error.reshape(-1,1),acc_error.reshape(-1,1)],1)
+    acc_error_t = np.array(acc_error_list_t)
+    tol_error = np.concatenate([vel_error.reshape(-1,1),acc_error.reshape(-1,1),acc_error_t.reshape(-1,1)],1)
 
     if os.path.isdir("datas/"+checkpoint_fol):
         pass

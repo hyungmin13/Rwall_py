@@ -155,15 +155,22 @@ if __name__ == "__main__":
     all_params["network"]["layers"] = from_state_dict(model, a).params
     dynamic_params = all_params["network"]["layers"]
     indexes, counts = np.unique(valid_data['pos'][:,0], return_counts=True)
+    indexes2, counts2 = np.unique(train_data['pos'][:,0], return_counts=True)
     print(counts.shape)
 #%% temporal error는 51개의 시간단계에대해서 [:,0]는 velocity error, [:,1]은 pressure error
     temporal_error_vel_list = []
     temporal_error_acc_list = []
+    temporal_error_acc_t_list = []
+    acc_v_list = []
+    acc_t_list = []
     c = 0
+    c2 = 0
     for j in range(50):
         print(j)
         acc = np.concatenate([acc_cal(all_params["network"]["layers"], all_params, valid_data['pos'][c:c+counts[j]][10000*s:10000*(s+1)], model_fn) 
                               for s in range(valid_data['pos'][c:c+counts[j]].shape[0]//10000+1)],0)
+        acc_t = np.concatenate([acc_cal(all_params["network"]["layers"], all_params, train_data['pos'][c2:c2+counts2[j]][10000*s:10000*(s+1)], model_fn) 
+                              for s in range(train_data['pos'][c2:c2+counts2[j]].shape[0]//10000+1)],0)
         pred = np.concatenate([model_fn(all_params, valid_data['pos'][c:c+counts[j]][10000*s:10000*(s+1)]) 
                               for s in range(valid_data['pos'][c:c+counts[j]].shape[0]//10000+1)],0)
         output_keys = ['u', 'v', 'w', 'p']
@@ -173,7 +180,9 @@ if __name__ == "__main__":
 
         output_ext = {output_keys[i]:valid_data['vel'][c:c+counts[j],i] for i in range(len(output_keys)-1)}
         output_ext_acc = {output_keys[i]:valid_data['acc'][c:c+counts[j],i] for i in range(len(output_keys)-1)}
+        output_ext_acc_t = {output_keys[i]:train_data['acc'][c2:c2+counts2[j],i] for i in range(len(output_keys)-1)}
         c = c + counts[j]
+        c2 = c2 + counts2[j]
         f = np.concatenate([(outputs['u']-output_ext['u']).reshape(-1,1), 
                             (outputs['v']-output_ext['v']).reshape(-1,1), 
                             (outputs['w']-output_ext['w']).reshape(-1,1)],1)
@@ -183,13 +192,23 @@ if __name__ == "__main__":
                              (acc[:,1]-output_ext_acc['v']).reshape(-1,1), 
                              (acc[:,2]-output_ext_acc['w']).reshape(-1,1)],1)
         div2 = np.concatenate([output_ext_acc['u'].reshape(-1,1), output_ext_acc['v'].reshape(-1,1), 
-                               output_ext_acc['w'].reshape(-1,1)],1) 
-        print(f.shape, div.shape, f2.shape, div2.shape)
+                               output_ext_acc['w'].reshape(-1,1)],1)
+        f3 = np.concatenate([(acc_t[:,0]-output_ext_acc_t['u']).reshape(-1,1), 
+                             (acc_t[:,1]-output_ext_acc_t['v']).reshape(-1,1), 
+                             (acc_t[:,2]-output_ext_acc_t['w']).reshape(-1,1)],1)
+        div3 = np.concatenate([output_ext_acc_t['u'].reshape(-1,1), output_ext_acc_t['v'].reshape(-1,1), 
+                               output_ext_acc_t['w'].reshape(-1,1)],1)
+
         temporal_error_vel_list.append(np.linalg.norm(f, ord='fro')/np.linalg.norm(div,ord='fro'))    
         temporal_error_acc_list.append(np.linalg.norm(f2, ord='fro')/np.linalg.norm(div2,ord='fro'))
+        temporal_error_acc_t_list.append(np.linalg.norm(f3, ord='fro')/np.linalg.norm(div3,ord='fro'))
+        acc_t_list.append(acc_t)
+        acc_v_list.append(acc)
     temporal_error = np.concatenate([np.array(temporal_error_vel_list).reshape(-1,1),
-                                     np.array(temporal_error_acc_list).reshape(-1,1)],1)
-
+                                     np.array(temporal_error_acc_list).reshape(-1,1),
+                                     np.array(temporal_error_acc_t_list).reshape(-1,1)],1)
+    acc_t_list = np.concatenate(acc_t_list)
+    acc_v_list = np.concatenate(acc_v_list)
 #%%
     if os.path.isdir("datas/"+checkpoint_fol):
         pass
@@ -199,3 +218,9 @@ if __name__ == "__main__":
     with open("datas/"+checkpoint_fol+"/temporal_error.pkl","wb") as f:
         pickle.dump(temporal_error,f)
     f.close()
+    with open("datas/"+checkpoint_fol+"/acc_t.pkl","wb") as f:
+        pickle.dump(acc_t_list,f)
+    f.close()
+    with open("datas/"+checkpoint_fol+"/acc_v.pkl","wb") as f:
+        pickle.dump(acc_v_list,f)
+    f.close()   
