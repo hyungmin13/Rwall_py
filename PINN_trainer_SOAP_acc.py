@@ -124,8 +124,11 @@ def PINN_loss(dynamic_params, all_params, g_batch, particles, particle_vel, part
     loss_w = jnp.mean(loss_w**2)
     
     loss_acc_x = acc_x - particle_acc[:,0:1]
+    loss_acc_x = jnp.mean(loss_acc_x**2)
     loss_acc_y = acc_y - particle_acc[:,1:2]
+    loss_acc_y = jnp.mean(loss_acc_y**2)
     loss_acc_z = acc_z - particle_acc[:,2:3]
+    loss_acc_z = jnp.mean(loss_acc_z**2)
     #loss_u_b = all_params["data"]['u_ref']*b_out[:,0:1]
     #loss_u_b = jnp.mean(loss_u_b**2)
 
@@ -237,6 +240,7 @@ class PINN(PINNbase):
             #b_key = next(b_batch_keys)
             p_batch = random.choice(p_key,train_data['pos'],shape=(self.c.optimization_init_kwargs["p_batch"],))
             v_batch = random.choice(p_key,train_data['vel'],shape=(self.c.optimization_init_kwargs["p_batch"],))
+            a_batch = random.choice(p_key,train_data['acc'],shape=(self.c.optimization_init_kwargs["p_batch"],))
             g_batch = jnp.stack([random.choice(g_key1,grids['eqns']['t'],shape=(self.c.optimization_init_kwargs["e_batch"],)),
                                 random.choice(g_key2,grids['eqns']['x'],shape=(self.c.optimization_init_kwargs["e_batch"],)),
                                 random.choice(g_key3,grids['eqns']['y'],shape=(self.c.optimization_init_kwargs["e_batch"],)),
