@@ -208,7 +208,9 @@ if __name__ == "__main__":
                                      np.array(temporal_error_acc_list).reshape(-1,1),
                                      np.array(temporal_error_acc_t_list).reshape(-1,1)],1)
     acc_t_list = np.concatenate(acc_t_list)
+    acc_t_list = np.concatenate([acc_t_list,train_data['acc']],1)
     acc_v_list = np.concatenate(acc_v_list)
+    acc_v_list = np.concatenate([acc_v_list,valid_data['acc']],1)
 #%%
     if os.path.isdir("datas/"+checkpoint_fol):
         pass
