@@ -120,22 +120,21 @@ if __name__ == "__main__":
     from PINN_problem import *
     import argparse
     from glob import glob
-    #checkpoint_fol = "TBL_run_test36"
+    #checkpoint_fol = "Rwall_SOAP_k1"
     parser = argparse.ArgumentParser(description='Rwall_PINN')
     parser.add_argument('-c', '--checkpoint', type=str, help='checkpoint', default="")
     args = parser.parse_args()
     checkpoint_fol = args.checkpoint
-    print(checkpoint_fol, type(checkpoint_fol))
+    #print(checkpoint_fol, type(checkpoint_fol))
     path = "results/summaries/"
     with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','rb') as f:
         a = pickle.load(f)
-    #a['data_init_kwargs']['path'] = 'DNS/'
-    #a['problem_init_kwargs']['path_s'] = 'Ground/'
+    #a['data_init_kwargs']['path'] = '/scratch/hyun/RealWall/to_distribute/for_FlowFit_0.8/'
+    #a['problem_init_kwargs']['path_s'] = '/scratch/hyun/RealWall/to_distribute/validate_02/'
     #with open(path+checkpoint_fol+'/constants_'+ str(checkpoint_fol) +'.pickle','wb') as f:
     #    pickle.dump(a,f)
 
     values = list(a.values())
-
     c = Constants(run = values[0],
                 domain_init_kwargs = values[1],
                 data_init_kwargs = values[2],
@@ -156,7 +155,7 @@ if __name__ == "__main__":
     dynamic_params = all_params["network"]["layers"]
     indexes, counts = np.unique(valid_data['pos'][:,0], return_counts=True)
     indexes2, counts2 = np.unique(train_data['pos'][:,0], return_counts=True)
-    print(counts.shape)
+
 #%% temporal error는 51개의 시간단계에대해서 [:,0]는 velocity error, [:,1]은 pressure error
     temporal_error_vel_list = []
     temporal_error_acc_list = []
