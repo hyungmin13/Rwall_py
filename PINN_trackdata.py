@@ -147,10 +147,11 @@ class Data(Database):
         else:
             filenames = sorted(glob(path+'*.dat'))[int(domain_range['t'][0]*frequency):int(domain_range['t'][-1]*frequency)+1][::timeskip]
         datas = {data_keys[i]:[] for i in range(len(data_keys))}
-        if bound == True:
-            seed_number = np.arange(0,1000)
-            np.random.seed(42)
-            seeds = np.random.choice(seed_number, len(filenames))
+        if "bound" in list(all_params["data"].keys()):
+            if bound == True:
+                seed_number = np.arange(0,1000)
+                np.random.seed(42)
+                seeds = np.random.choice(seed_number, len(filenames))
         for t, filename in enumerate(filenames):
             if ".dat" in filename:
                 all_data_ = Data.data_load(filename, data_keys)
