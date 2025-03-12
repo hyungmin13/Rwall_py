@@ -139,7 +139,8 @@ class Data(Database):
         track_limit = all_params["data"]["track_limit"]
         frequency = all_params["data"]["frequency"]
         data_keys = all_params["data"]["data_keys"]
-        bound = all_params["data"]["bound"]
+        if "bound" in list(all_params["data"].keys()):
+            bound = all_params["data"]["bound"]
         vel_ref_keys = ['u_ref', 'v_ref', 'w_ref']
         if glob(path+"*.npy"):
             filenames = sorted(glob(path+'*.npy'))[int(domain_range['t'][0]*frequency):int(domain_range['t'][-1]*frequency)+1][::timeskip]
