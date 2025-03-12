@@ -3,7 +3,7 @@ import numpy as np
 from glob import glob
 class Database:
     @staticmethod
-    def init_parmas(path, s_range, t_range, track_limit):
+    def init_parmas(path, s_range, t_range, track_limit, bound):
         raise NotImplementedError
     @staticmethod
     def data_load(filename):
@@ -61,8 +61,8 @@ class Data(Database):
         vel = np.concatenate([data[:,3:4]*vscale[0], data[:,4:5]*vscale[1], data[:,5:6]*vscale[2]],1)
         if 'acc' in data_keys:
             acc = np.concatenate([data[:,6:7]*ascale[0], data[:,7:8]*ascale[1], data[:,8:9]*ascale[2]],1)
-        if 'track' in data_keys:
-            track = data[:,9:10]
+        if 'track_id' in data_keys:
+            track_id = data[:,10:11]
         all_data = {}
         for i in range(len(data_keys)):
             all_data[data_keys[i]] = eval(data_keys[i])
@@ -90,9 +90,9 @@ class Data(Database):
 
     @staticmethod
     def domain_filter(all_data_, data_keys, domain_range):
-        index = np.where((all_data_['pos'][:,1]>=domain_range['x'][0])&(all_data_['pos'][:,1]<domain_range['x'][1])&
-                         (all_data_['pos'][:,2]>=domain_range['y'][0])&(all_data_['pos'][:,2]<domain_range['y'][1])&
-                         (all_data_['pos'][:,3]>=domain_range['z'][0])&(all_data_['pos'][:,3]<domain_range['z'][1]))
+        index = np.where((all_data_['pos'][:,1]>=domain_range['x'][0])&(all_data_['pos'][:,1]<=domain_range['x'][1])&
+                         (all_data_['pos'][:,2]>=domain_range['y'][0])&(all_data_['pos'][:,2]<=domain_range['y'][1])&
+                         (all_data_['pos'][:,3]>=domain_range['z'][0])&(all_data_['pos'][:,3]<=domain_range['z'][1]))
         all_data_ = {data_keys[i]:all_data_[data_keys[i]][index[0],:] for i in range(len(data_keys))}
         return all_data_
     
@@ -139,12 +139,17 @@ class Data(Database):
         track_limit = all_params["data"]["track_limit"]
         frequency = all_params["data"]["frequency"]
         data_keys = all_params["data"]["data_keys"]
+        bound = all_params["data"]["bound"]
         vel_ref_keys = ['u_ref', 'v_ref', 'w_ref']
         if glob(path+"*.npy"):
             filenames = sorted(glob(path+'*.npy'))[int(domain_range['t'][0]*frequency):int(domain_range['t'][-1]*frequency)+1][::timeskip]
         else:
             filenames = sorted(glob(path+'*.dat'))[int(domain_range['t'][0]*frequency):int(domain_range['t'][-1]*frequency)+1][::timeskip]
         datas = {data_keys[i]:[] for i in range(len(data_keys))}
+        if bound == True:
+            seed_number = np.arange(0,1000)
+            np.random.seed(42)
+            seeds = np.random.choice(seed_number, len(filenames))
         for t, filename in enumerate(filenames):
             if ".dat" in filename:
                 all_data_ = Data.data_load(filename, data_keys)
@@ -152,6 +157,20 @@ class Data(Database):
                 all_data_ = Data.data_load_npy(filename, data_keys)
             if 'track' in data_keys:
                 all_data_ = Data.track_filter(all_data_, data_keys, track_limit)
+            if bound == True:
+                np.random.seed(seeds[t])
+                xyz = np.column_stack([np.random.uniform(*domain_range['x'], 168)-0.03,
+                                       np.zeros(168),
+                                       np.random.uniform(*domain_range['z'], 168)-0.0085])
+                uvw = np.column_stack([np.zeros(168),
+                                       np.zeros(168),
+                                       np.zeros(168)])
+                uvwacc = np.column_stack([np.zeros(168),
+                                       np.zeros(168),
+                                       np.zeros(168)])
+                all_data_['pos'] = np.concatenate([all_data_['pos'], xyz], 0)
+                all_data_['vel'] = np.concatenate([all_data_['vel'], uvw], 0)
+                all_data_['acc'] = np.concatenate([all_data_['acc'], uvwacc], 0)
             time = np.zeros((all_data_['pos'].shape[0],1))+t*int(timeskip)/frequency
             all_data_['pos'] = np.concatenate([time,all_data_['pos']],1)
             for i in range(len(data_keys)): datas[data_keys[i]].append(all_data_[data_keys[i]])
@@ -178,6 +197,7 @@ class Data(Database):
     
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     all_params = {"data":{}}
     path = '/scratch/hyun/RealWall/to_distribute/for_FlowFit_0.8/'
     timeskip = 1
@@ -185,11 +205,13 @@ if __name__ == "__main__":
     frequency = 23900
     domain_range = {'t':(0,50/frequency), 'x':(0,0.058), 'y':(0,0.00321), 'z':(0,0.0171)}
     viscosity = 15*10**(-6)
+    #data_keys = ['pos', 'vel', 'acc', 'track_id']
     data_keys = ['pos', 'vel', 'acc']
     data_split = 0.8
+    bound = True
     all_params["data"] = Data.init_params(path = path, domain_range = domain_range, 
                                           timeskip = timeskip, track_limit = track_limit, 
                                           frequency = frequency, data_keys = data_keys, 
-                                          viscosity = viscosity)
+                                          viscosity = viscosity, bound = bound)
     
     train_data, all_params = Data.train_data(all_params)

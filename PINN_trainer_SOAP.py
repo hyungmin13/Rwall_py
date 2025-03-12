@@ -351,12 +351,12 @@ if __name__=="__main__":
     bound_keys = ['ic', 'bcxu', 'bcxl', 'bcyu', 'bcyl', 'bczu', 'bczl']
 
     # Set Data params
-    path = '/scratch/hyun/RealWall/to_distribute/for_FlowFit_0.8/'
+    path = 'RealWall/to_distribute/for_FlowFit_0.8/'
     timeskip = 1
     track_limit = 424070
     viscosity = 15*10**(-6)
     data_keys = ['pos', 'vel', 'acc']
-    
+    bound = True
     # Set network params
     key = random.PRNGKey(1)
     layer_sizes = [4, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 4]
@@ -365,7 +365,7 @@ if __name__=="__main__":
     # Set problem params
     viscosity = 15e-6
     loss_weights = (1.0, 1.0, 1.0, 0.0000001, 0.00000001, 0.00000001, 0.00000001, 1.0)
-    path_s = '/scratch/hyun/RealWall/to_distribute/validate_02/'
+    path_s = 'RealWall/to_distribute/validate_02/'
     problem_name = 'Rwall'
     # Set optimization params
     n_steps = 100000000
@@ -381,7 +381,8 @@ if __name__=="__main__":
         domain_init_kwargs = dict(domain_range = domain_range, frequency = frequency, 
                                   grid_size = grid_size, bound_keys=bound_keys),
         data_init_kwargs = dict(path = path, domain_range = domain_range, timeskip = timeskip,
-                                track_limit = track_limit, frequency = frequency, data_keys = data_keys, viscosity = viscosity),
+                                track_limit = track_limit, frequency = frequency, 
+                                data_keys = data_keys, viscosity = viscosity, bound = bound),
         network_init_kwargs = dict(key = key, layer_sizes = layer_sizes, network_name = network_name),
         problem_init_kwargs = dict(domain_range = domain_range, viscosity = viscosity, loss_weights = loss_weights,
                                    path_s = path_s, frequency = frequency, problem_name = problem_name),
