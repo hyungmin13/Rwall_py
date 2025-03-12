@@ -158,20 +158,21 @@ class Data(Database):
                 all_data_ = Data.data_load_npy(filename, data_keys)
             if 'track' in data_keys:
                 all_data_ = Data.track_filter(all_data_, data_keys, track_limit)
-            if bound == True:
-                np.random.seed(seeds[t])
-                xyz = np.column_stack([np.random.uniform(*domain_range['x'], 168)-0.03,
-                                       np.zeros(168),
-                                       np.random.uniform(*domain_range['z'], 168)-0.0085])
-                uvw = np.column_stack([np.zeros(168),
-                                       np.zeros(168),
-                                       np.zeros(168)])
-                uvwacc = np.column_stack([np.zeros(168),
-                                       np.zeros(168),
-                                       np.zeros(168)])
-                all_data_['pos'] = np.concatenate([all_data_['pos'], xyz], 0)
-                all_data_['vel'] = np.concatenate([all_data_['vel'], uvw], 0)
-                all_data_['acc'] = np.concatenate([all_data_['acc'], uvwacc], 0)
+            if "bound" in list(all_params["data"].keys()):
+                if bound == True:
+                    np.random.seed(seeds[t])
+                    xyz = np.column_stack([np.random.uniform(*domain_range['x'], 168)-0.03,
+                                        np.zeros(168),
+                                        np.random.uniform(*domain_range['z'], 168)-0.0085])
+                    uvw = np.column_stack([np.zeros(168),
+                                        np.zeros(168),
+                                        np.zeros(168)])
+                    uvwacc = np.column_stack([np.zeros(168),
+                                        np.zeros(168),
+                                        np.zeros(168)])
+                    all_data_['pos'] = np.concatenate([all_data_['pos'], xyz], 0)
+                    all_data_['vel'] = np.concatenate([all_data_['vel'], uvw], 0)
+                    all_data_['acc'] = np.concatenate([all_data_['acc'], uvwacc], 0)
             time = np.zeros((all_data_['pos'].shape[0],1))+t*int(timeskip)/frequency
             all_data_['pos'] = np.concatenate([time,all_data_['pos']],1)
             for i in range(len(data_keys)): datas[data_keys[i]].append(all_data_[data_keys[i]])
